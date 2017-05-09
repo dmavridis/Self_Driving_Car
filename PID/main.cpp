@@ -36,10 +36,20 @@ int main()
   // TODO: Initialize the pid variable.
   pid.Init( 0.2, 0.004, 3);
 
+
+
+
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
+
+    // Variables for twiddle
+    std::vector<double> p({pid.Kp, pid.Ki, pid.Kd});
+    std::vector<double> dp({.1,.01,.1});
+    double err, best_err;
+    double dp_sum = dp[0]+dp[1]+dp[2];
+
     if (length && length > 2 && data[0] == '4' && data[1] == '2')
     {
       auto s = hasData(std::string(data));
@@ -60,21 +70,68 @@ int main()
           * another PID controller to control the speed!
           */
           pid.UpdateError(cte);
+
+
+
+          // Adding twiddle
+          while(dp_sum > 0.001){
+              for(int i=0; i<3; i++){
+                  p[i] += dp[i];
+                  err = cte;
+                  pid.Kp = p[0];
+                  pid.Ki = p[1];
+                  pid.Kd = p[2];
+                  steer_value = -pid.Kp*pid.p_error - pid.Kd*pid.d_error - pid.Ki*pid.i_error;
+
+                  pid.UpdateError(err);
+                  if (err < best_err){
+                      best_err = err;
+                      dp[i] *= 1.1;
+                      p[i] -= 2*dp[i];
+                  }
+                  else{
+                      p[i] += dp[i];
+                      dp[i] *= 0.9;
+                  }
+              }
+
+              dp_sum = dp[0]+dp[1]+dp[2];
+              std::cout<<"dpSum : " << dp_sum << std::endl;
+          }
+
+          /*
+          while sum(dp) > 0.0001:
+                  for i in range(len(p)):
+                      p[i] += dp[i]
+                      x_trajectory, y_trajectory, err = run(robot, p)
+                      if err < best_err:
+                          best_err = err
+                          dp[i] *= 1.1
+                          p[i] -= 2*dp[i]
+                      else:
+                          p[i] += dp[i]
+                          dp[i] *= 0.9
+              return p, best_err
+          */
+
+
           std::cout<<"[Kp, Kd, Ki]: "<<pid.Kp <<" , "<< pid.Kd << " , "<< pid.Ki << std::endl;
           std::cout<<"[P, D, I]: "<<pid.p_error <<" , "<< pid.d_error << " , "<< pid.i_error << std::endl;
-          steer_value = -pid.Kp*pid.p_error - pid.Kd*pid.d_error - pid.Ki*pid.i_error;
           
           throttle = 0.3;
           //throttle = std::max(0.3, -0.1/0.05 * abs(steer_value) + 0.55);
 
-          // DEBUG
+
+
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+          std::cout << "Total error : "<< sqrt(pid.TotalError()) << std::endl;
           json msgJson;
           msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = throttle;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+
         }
       } else {
         // Manual driving
