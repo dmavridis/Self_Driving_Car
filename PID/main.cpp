@@ -3,6 +3,7 @@
 #include "json.hpp"
 #include "PID.h"
 #include <math.h>
+#include <fstream>
 
 // for convenience
 using json = nlohmann::json;
@@ -28,6 +29,9 @@ std::string hasData(std::string s) {
   return "";
 }
 
+std::ofstream myfile;
+
+
 int main()
 {
   uWS::Hub h;
@@ -36,7 +40,9 @@ int main()
   // TODO: Initialize the pid variable.
   pid.Init( 0.2, 0.004, 3);
 
+  // define the file
 
+  myfile.open ("example.txt");
 
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
@@ -63,15 +69,30 @@ int main()
           double angle = std::stod(j[1]["steering_angle"].get<std::string>());
           double steer_value;
           double throttle;
+          int it = 0;
+
           /*
           * TODO: Calcuate steering value here, remember the steering value is
           * [-1, 1].
           * NOTE: Feel free to play around with the throttle and speed. Maybe use
           * another PID controller to control the speed!
           */
+
+          myfile<<"branch,err, Kp, Kd, Ki, p0,p1,p2,dp0,dp1,dp2"<<std::endl;
+
+          // Initial run
           pid.UpdateError(cte);
+          throttle = 0.3;
+          steer_value = -pid.Kp*pid.p_error - pid.Kd*pid.d_error - pid.Ki*pid.i_error;
 
+          json msgJson;
+          msgJson["steering_angle"] = steer_value;
+          msgJson["throttle"] = throttle;
+          auto msg = "42[\"steer\"," + msgJson.dump() + "]";
+          std::cout << msg << std::endl;
+          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
 
+          it = 0;
 
           // Adding twiddle
           while(dp_sum > 0.001){
@@ -82,55 +103,100 @@ int main()
                   pid.Ki = p[1];
                   pid.Kd = p[2];
                   steer_value = -pid.Kp*pid.p_error - pid.Kd*pid.d_error - pid.Ki*pid.i_error;
-
                   pid.UpdateError(err);
+
+
+
                   if (err < best_err){
                       best_err = err;
                       dp[i] *= 1.1;
-                      p[i] -= 2*dp[i];
-                  }
-                  else{
-                      p[i] += dp[i];
-                      dp[i] *= 0.9;
-                  }
-              }
+                      myfile<<"0,"<<err<<","<<pid.Kp <<","<< pid.Kd << ","<< pid.Ki<<"," \
+                           <<p[0]<<","<<p[1]<<","<<p[2]<<"," \
+                           <<dp[0]<<","<<dp[1]<<","<<dp[2]<<std::endl;
 
+                  }
+                   else{
+                      p[i] -= 2*dp[i];
+                      pid.Kp = p[0];
+                      pid.Ki = p[1];
+                      pid.Kd = p[2];
+                      steer_value = -pid.Kp*pid.p_error - pid.Kd*pid.d_error - pid.Ki*pid.i_error;
+                      pid.UpdateError(err);
+
+                      if (err < best_err){
+                          best_err = err;
+                          dp[i] *= 1.1;
+                          myfile<<"1,"<<err<<","<<pid.Kp <<","<< pid.Kd << ","<< pid.Ki<<"," \
+                          <<p[0]<<","<<p[1]<<","<<p[2]<<"," \
+                               <<dp[0]<<","<<dp[1]<<","<<dp[2]<<std::endl;
+                      }
+                      else{
+                          p[i] += dp[i];
+                          dp[i] *= 0.9;
+                          myfile<<"2,"<<err<<","<<pid.Kp <<","<< pid.Kd << ","<< pid.Ki<<"," \
+                          <<p[0]<<","<<p[1]<<","<<p[2]<<"," \
+                               <<dp[0]<<","<<dp[1]<<","<<dp[2]<<std::endl;
+                      }
+                      }
+                  }
+
+                  it += 1;
+              }
+              myfile.close();
               dp_sum = dp[0]+dp[1]+dp[2];
               std::cout<<"dpSum : " << dp_sum << std::endl;
+
           }
 
           /*
-          while sum(dp) > 0.0001:
-                  for i in range(len(p)):
-                      p[i] += dp[i]
-                      x_trajectory, y_trajectory, err = run(robot, p)
-                      if err < best_err:
-                          best_err = err
-                          dp[i] *= 1.1
-                          p[i] -= 2*dp[i]
-                      else:
-                          p[i] += dp[i]
-                          dp[i] *= 0.9
-              return p, best_err
-          */
+def twiddle(tol=0.2):
+    p = [0, 0, 0]
+    dp = [1, 1, 1]
+    robot = make_robot()
+    x_trajectory, y_trajectory, best_err = run(robot, p)
 
+    it = 0
+    while sum(dp) > tol:
+        print("Iteration {}, best error = {}".format(it, best_err))
+        for i in range(len(p)):
+            p[i] += dp[i]
+            robot = make_robot()
+            x_trajectory, y_trajectory, err = run(robot, p)
+
+            if err < best_err:
+                best_err = err
+                dp[i] *= 1.1
+            else:
+                p[i] -= 2 * dp[i]
+                robot = make_robot()
+                x_trajectory, y_trajectory, err = run(robot, p)
+
+                if err < best_err:
+                    best_err = err
+                    dp[i] *= 1.1
+                else:
+                    p[i] += dp[i]
+                    dp[i] *= 0.9
+        it += 1
+    return p
+          */
 
           std::cout<<"[Kp, Kd, Ki]: "<<pid.Kp <<" , "<< pid.Kd << " , "<< pid.Ki << std::endl;
           std::cout<<"[P, D, I]: "<<pid.p_error <<" , "<< pid.d_error << " , "<< pid.i_error << std::endl;
-          
-          throttle = 0.3;
+
+//          throttle = 0.3;
           //throttle = std::max(0.3, -0.1/0.05 * abs(steer_value) + 0.55);
 
 
 
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
-          std::cout << "Total error : "<< sqrt(pid.TotalError()) << std::endl;
-          json msgJson;
-          msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = throttle;
-          auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
-          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+//          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+//          std::cout << "Total error : "<< sqrt(pid.TotalError()) << std::endl;
+//          json msgJson;
+//          msgJson["steering_angle"] = steer_value;
+//          msgJson["throttle"] = throttle;
+//          auto msg = "42[\"steer\"," + msgJson.dump() + "]";
+//          std::cout << msg << std::endl;
+//          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
 
         }
       } else {
@@ -138,7 +204,7 @@ int main()
         std::string msg = "42[\"manual\",{}]";
         ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
       }
-    }
+
   });
 
   // We don't need this since we're not using HTTP but if it's removed the program
