@@ -12,6 +12,8 @@
 #include "vehicle.h"
 #include "vehicle.cpp"
 #include "transforms.h"
+#include "road.h"
+#include "road.cpp"
 
 using namespace std;
 
@@ -35,52 +37,18 @@ string hasData(string s) {
 }
 
 
-
-
-
-
-
 int main() {
   uWS::Hub h;
 
-  // Define self as vehicle
-  Vehicle ego;
-
-  // Load up map values for waypoint's x,y,s and d normalized normal vectors
-  vector<double> map_waypoints_x;
-  vector<double> map_waypoints_y;
-  vector<double> map_waypoints_s;
-  vector<double> map_waypoints_dx;
-  vector<double> map_waypoints_dy;
-
-  // Waypoint map to read from
+  // Define the landscape
   string map_file_ = "../data/highway_map.csv";
-  // The max s value before wrapping around the track back to 0
-  double max_s = 6945.554;
+  Road road = Road(map_file_);
 
-  ifstream in_map_(map_file_.c_str(), ifstream::in);
-  string line;
-  while (getline(in_map_, line)) {
-  	istringstream iss(line);
-  	double x;
-  	double y;
-  	float s;
-  	float d_x;
-  	float d_y;
+  // Define self as vehicle
+  Vehicle ego = Vehicle(0); // ego has id = 0
 
-  	iss >> x;
-  	iss >> y;
-  	iss >> s;
-  	iss >> d_x;
-  	iss >> d_y;
-  	map_waypoints_x.push_back(x);
-  	map_waypoints_y.push_back(y);
-  	map_waypoints_s.push_back(s);
-  	map_waypoints_dx.push_back(d_x);
-  	map_waypoints_dy.push_back(d_y);
-  }
 
-  h.onMessage([&ego, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&ego, &road](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -101,8 +69,6 @@ int main() {
         if (event == "telemetry") {
           // j[1] is the data JSON object
           
-
-
         	// Main car's localization Data
           	double car_x = j[1]["x"];
           	double car_y = j[1]["y"];
@@ -121,14 +87,27 @@ int main() {
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = j[1]["sensor_fusion"];
 
-          	json msgJson;
+                map<int , vector<double>> fusion;
+                for (int i=0; i < sensor_fusion.size(); i++){
+                        int vid = sensor_fusion[i][0]; // 0 is reserved for ego
+                        vid++;
+                        vector<double> v = sensor_fusion[i]; // temporary variable
+                        vector<double> state(v.begin() + 1, v.end());
+                        fusion[vid] = state;
+
+                }
+
+ //               Road.UpdateCars(fusion);
+
+
+
+                json msgJson;
 
                 vector<double> next_x_vals;
                 vector<double> next_y_vals;
 
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
-
 
                 double pos_x;
                 double pos_y;
@@ -164,25 +143,26 @@ int main() {
 
                 const int speed = 50; // mph
 
-
                 // Update Car Position
-                vector<double> car_frenet;
-                car_frenet = getFrenet(pos_x, pos_y, angle, map_waypoints_x, map_waypoints_y);
-                pos_s = car_frenet[0];
-                pos_d = car_frenet[1];
-
-                ego.UpdatePosition(pos_x,pos_y,pos_s,pos_d,angle);
+                ego.UpdatePosition(pos_x,pos_y,angle, road.map_waypoints_x, road.map_waypoints_y);
 
                 // calculate next mappoints for ego
                 double dist_inc = 0.9*speed*1.609/3.6*0.02;
 
                 int next_map_point;
-                next_map_point = NextWaypoint(ego.pos_x, ego.pos_y, ego.angle, map_waypoints_x, map_waypoints_y);
-                ego.UpdateTrajectory(next_x_vals, next_y_vals, next_map_point, map_waypoints_x, map_waypoints_y,map_waypoints_s);
+                next_map_point = NextWaypoint(ego.pos_x, ego.pos_y, ego.angle,
+                                              road.map_waypoints_x, road.map_waypoints_y);
+                ego.UpdateTrajectory(next_x_vals, next_y_vals, next_map_point,
+                                     road.map_waypoints_x, road.map_waypoints_y,road.map_waypoints_s);
+
+
+
+
 
 
                 msgJson["next_x"] = ego.next_x_vals;
                 msgJson["next_y"] = ego.next_y_vals;
+
 
                 auto msg = "42[\"control\","+ msgJson.dump()+"]";
 

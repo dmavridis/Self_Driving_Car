@@ -10,5 +10,4 @@ int NextWaypoint(double x, double y, double theta, vector<double> maps_x, vector
 vector<double> getFrenet(double x, double y, double theta, vector<double> maps_x, vector<double> maps_y);
 
 
-
 #endif

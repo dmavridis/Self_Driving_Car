@@ -18,7 +18,11 @@ public:
 
   int L = 1;
 
+  int vid;
+
   double pos_x, pos_y, angle, pos_s, pos_d;
+
+  double vx,vy;
 
   vector<double> next_x_vals, next_y_vals;
 
@@ -27,6 +31,7 @@ public:
   int speed;
 
   int preferred_buffer = 6; // impacts "keep lane" behavior.
+
 
   int s;
 
@@ -49,7 +54,7 @@ public:
   /**
   * Constructor
   */
-  Vehicle();
+  Vehicle(int vid);
 
   /**
   * Destructor
@@ -57,10 +62,12 @@ public:
   virtual ~Vehicle();
 
 
-  void UpdatePosition(double pos_x, double pos_y, double pos_s, double pos_d, double angle);
+  void UpdatePosition(double pos_x, double pos_y, double angle, vector<double> map_waypoints_x, vector<double> map_waypoints_y);
 
   void UpdateTrajectory(vector<double> next_x_vals, vector<double> next_y_vals, int next_map_point,
                                 vector<double> map_waypoints_x, vector<double> map_waypoints_y, vector<double> map_waypoints_s);
+
+  void UpdateState(vector<double> state);
 };
 
 #endif

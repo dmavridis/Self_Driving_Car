@@ -13,20 +13,30 @@
  */
 
 
-Vehicle::Vehicle() {
-    cout << "I have been created" << endl;
+Vehicle::Vehicle(int vid) {
+    this->vid = vid;
+    cout << "Created vehicle " << this->vid << endl;
 }
 
 Vehicle::~Vehicle() {}
 
-void Vehicle::UpdatePosition(double pos_x, double pos_y, double pos_s, double pos_d, double angle) {
-// Updates the position of the car with new measurement data
+
+
+
+void Vehicle::UpdatePosition(double pos_x, double pos_y, double angle,
+                             vector<double> map_waypoints_x, vector<double> map_waypoints_y){
+    // Updates the position of ego car with new measurement data
+
 
     this->pos_x = pos_x;
     this->pos_y = pos_y;
     this->angle = angle;
-    this->pos_s = pos_s;
-    this->pos_d = pos_d;
+
+    vector<double> car_frenet;
+    car_frenet = getFrenet(this->pos_x, this->pos_y, angle, map_waypoints_x, map_waypoints_y);
+    this->pos_s = car_frenet[0];
+    this->pos_d = car_frenet[1];
+
     }
 
 
@@ -47,7 +57,6 @@ void Vehicle::UpdateTrajectory(vector<double> next_x_vals, vector<double> next_y
     int path_size = next_x_vals.size();
     int des_d = 6;
 
-
     for (int i = 1; i < MAP_DEPTH; i++){
         S_[i] = map_waypoints_s[next_map_point+i];
         XY_ = getXY(S_[i], des_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
@@ -60,28 +69,30 @@ void Vehicle::UpdateTrajectory(vector<double> next_x_vals, vector<double> next_y
      x_from_s.set_points(S_,X_);
      y_from_s.set_points(S_,Y_);
 
-    double pos_s = this->pos_s;
     // Update the path buffer
     for(int i = 0; i < 50 - path_size; i++)
      {
-         pos_s += 0.4;
-
+         this->pos_s += 0.4;
          double x_traj, y_traj;
-         x_traj = x_from_s(pos_s);
-         y_traj = y_from_s(pos_s);
+         x_traj = x_from_s(this->pos_s);
+         y_traj = y_from_s(this->pos_s);
 
          this->next_x_vals.push_back(x_traj);
          this->next_y_vals.push_back(y_traj);
-
 
      }
 
 }
 
-
-void Vehicle::RealizeChangeLane(int lane){
-
-
+void Vehicle::UpdateState(vector<double> state){
+    // Updates the state of a car. This refers to position and velocity
+    // Used for the other cars than the ego
+    this->pos_x = state[0];
+    this->pos_y = state[1];
+    this->vx = state[2];
+    this->vy = state[3];
+    this->pos_s = state[4];
+    this->pos_d = state[5];
 }
 
 
