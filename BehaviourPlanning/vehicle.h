@@ -16,6 +16,10 @@ class Vehicle {
 
 public:
 
+  bool change_lane = false;
+
+  bool speed_update = false;
+
   int L = 1;
 
   int vid;
@@ -28,7 +32,7 @@ public:
 
   int lane;
 
-  int speed;
+  double speed, target_speed;
 
   int preferred_buffer = 6; // impacts "keep lane" behavior.
 
@@ -39,11 +43,11 @@ public:
 
   int a;
 
-  int target_speed;
-
   int lanes_available;
 
-  int max_acceleration;
+  const double acceleration = 0.224; // miles/s/s
+
+
 
   int goal_lane;
 
@@ -62,12 +66,18 @@ public:
   virtual ~Vehicle();
 
 
-  void UpdatePosition(double pos_x, double pos_y, double angle, vector<double> map_waypoints_x, vector<double> map_waypoints_y);
+  void UpdateState(double pos_x, double pos_y, double angle, double pos_s);
 
-  void UpdateTrajectory(vector<double> next_x_vals, vector<double> next_y_vals, int next_map_point,
-                                vector<double> map_waypoints_x, vector<double> map_waypoints_y, vector<double> map_waypoints_s);
+  void UpdateTrajectory(vector<double> map_waypoints_x, vector<double> map_waypoints_y, vector<double> map_waypoints_s,
+                                vector<double> previous_path_x, vector<double> previous_path_y);
 
-  void UpdateState(vector<double> state);
+
+  void UpdateOtherState(vector<double> state);
+
+  void UpdateSpeed();
+
+  void LaneChange(int lane);
+
 };
 
 #endif

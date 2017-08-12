@@ -4,7 +4,10 @@
 #include <string>
 #include <iterator>
 #include "road.h"
-#include "vehicle.h"
+
+
+
+
 
 Road::Road(string map_file_) {
 
@@ -34,7 +37,9 @@ Road::Road(string map_file_) {
           this->map_waypoints_dx.push_back(d_x);
           this->map_waypoints_dy.push_back(d_y);
     }
-    cout << "Created Landascape" << endl;
+    this->LANE_WIDTH = 4;
+
+    cout << "Created Landscape" << endl;
 }
 
 
@@ -50,16 +55,16 @@ void Road::PopulateTraffic(map<int , vector<double>> sensor_fusion){
 
     map<int, vector<double>>::iterator it = sensor_fusion.begin();
 
-    while(it != sensor_fusion.end()){
-        // check if already exists, if not create vehicle
-        if(find(this->vehicle_ids.begin(), this->vehicle_ids.end(), it->first) != this->vehicle_ids.end()){
-            this->vehicle_ids.push_back(it->first);
-            this->vehicles.insert(std::pair<int,Vehicle>(it->first, Vehicle(it->first)));
-        }
-        // Append state
-        this->vehicles.at(it->first).UpdateState(it->second);
-        it++;
-    }
+//    while(it != sensor_fusion.end()){
+//        // check if already exists, if not create vehicle
+//        if(find(this->vehicle_ids.begin(), this->vehicle_ids.end(), it->first) != this->vehicle_ids.end()){
+//            this->vehicle_ids.push_back(it->first);
+//            this->vehicles.insert(std::pair<int,Vehicle>(it->first, Vehicle(it->first)));
+//        }
+//        // Append state
+//        this->vehicles.at(it->first).UpdateOtherState(it->second);
+//        it++;
+//    }
 
 }
 

@@ -5,7 +5,7 @@
 #include <string>
 #include "vehicle.h"
 
-using namespace std;
+// using namespace std;
 
 class Road {
 
@@ -23,9 +23,9 @@ public:
 
   vector<int> vehicle_ids;
 
-  map<int, Vehicle> vehicles; // vehicles caprtured by sensor fusion
+  // map<int, Vehicle> vehicles; // vehicles caprtured by sensor fusion
 
-  double lane_width;
+  int LANE_WIDTH;
 
   string map_file_;
   /**

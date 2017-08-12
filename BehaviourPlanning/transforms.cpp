@@ -142,9 +142,9 @@ vector<double> getFrenet(double x, double y, double theta, vector<double> maps_x
 
 }
 
-//int DtoLane(double d, double lane_width){
-//    return int(floor(d/lane_width))
-//}
+int DtoLane(double d, double lane_width){
+    return int(floor(d/lane_width));
+}
 
 //double LanetoD(int lane, double lane_width){
 //    return (lane+0.5)*lane_width;
